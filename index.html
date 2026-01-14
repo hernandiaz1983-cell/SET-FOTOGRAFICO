@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SET FOTOGRAFICO V19.0 (BETA)</title>
+
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/1042/1042339.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    :root { --p:#1e40af; --bg:#f1f5f9; --accent:#059669; --light-green:#2ecc71; --dark-gray:#334155; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body { font-family:'Segoe UI',sans-serif; background:var(--bg); margin:0; padding:0; display:flex; justify-content:center; height:100dvh; overflow:hidden; }
+
+    .splash-screen{
+      position:fixed;top:0;left:0;right:0;bottom:0;
+      background:linear-gradient(135deg,var(--light-green) 0%,#ffffff 100%);
+      display:flex;flex-direction:column;justify-content:center;align-items:center;
+      z-index:9999;transition:opacity .5s ease;
+    }
+    .splash-screen.hidden{opacity:0;pointer-events:none;}
+    .splash-icons-cont{display:flex;align-items:center;gap:15px;margin-bottom:20px;}
+    .splash-icon{width:70px;height:70px;}
+    .splash-cam{fill:var(--dark-gray);}
+    .splash-hour{fill:var(--accent);animation:rotateHour 3s infinite linear;}
+    @keyframes rotateHour{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
+    .splash-title{font-size:2rem;color:var(--p);margin:0;font-weight:900;letter-spacing:1px;}
+
+    .card{ background:white;width:100%;max-width:500px;height:100%;display:flex;flex-direction:column;position:relative;box-shadow:0 0 20px rgba(0,0,0,0.1); }
+    .app-header{ background:#fff;border-bottom:1px solid #e2e8f0;padding:15px;text-align:center;flex-shrink:0;z-index:10; }
+    .app-header h1{ font-size:1.4rem;margin:0;color:var(--p);font-weight:800; }
+    .content{ padding:20px;flex-grow:1;overflow-y:auto;-webkit-overflow-scrolling:touch; }
+    .app-footer{ padding:12px;text-align:center;border-top:1px solid #e2e8f0;color:var(--p);font-size:.75rem;font-weight:700;background:#f8fafc;flex-shrink:0;text-transform:uppercase;letter-spacing:1px; }
+
+    .step{display:none;animation:fadeIn .3s ease;}
+    .step.active{display:block;}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+
+    h2{ font-size:1.1rem;color:#334155;text-align:center;text-transform:uppercase;border-bottom:3px solid var(--p);padding-bottom:10px;margin-top:0; }
+    input[type="text"], input[type="date"], textarea{
+      width:100%;padding:14px;margin:10px 0;border:1px solid #cbd5e1;border-radius:10px;
+      font-size:16px;background:#fff;
+    }
+    textarea{resize:vertical;min-height:80px;}
+
+    button,.btn-label{
+      width:100%;padding:16px;margin:6px 0;border:none;border-radius:10px;
+      font-weight:bold;cursor:pointer;color:white;text-transform:uppercase;
+      font-size:1rem;display:block;text-align:center;transition:transform .1s;
+    }
+    button:active,.btn-label:active{transform:scale(.98);}
+    .btn-main{background:var(--p);}
+    .btn-sec{background:#64748b;}
+    .btn-danger{background:#ef4444;font-size:.9rem;margin-top:25px;}
+    .btn-mini{padding:10px;font-size:.78rem;border-radius:8px;margin:0;}
+    button:disabled{opacity:.55;cursor:not-allowed;}
+
+    input[type="file"]{display:none;}
+    .btn-camara{background:var(--p);display:flex;align-items:center;justify-content:center;gap:10px;}
+
+    .item-foto{
+      border:1px solid #e2e8f0;padding:12px;margin-bottom:15px;border-radius:12px;
+      background:#fff;box-shadow:0 2px 5px rgba(0,0,0,0.05);
+    }
+    .item-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;color:var(--p);font-weight:bold;font-size:.9rem;}
+    .btn-delete{color:#ef4444;background:#fee2e2;padding:4px 10px;border-radius:5px;cursor:pointer;}
+    #status{color:var(--accent);font-weight:bold;text-align:center;margin:10px 0;min-height:20px;}
+
+    .review-box{border:1px solid #e2e8f0;border-radius:12px;padding:12px;background:#f8fafc;margin-bottom:15px;}
+    .review-box label{font-weight:800;color:#334155;display:block;margin-bottom:6px;text-transform:uppercase;font-size:.8rem;letter-spacing:.5px;}
+    .grid-actions-4{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;}
+    .hint{font-size:.78rem;color:#64748b;margin-top:8px;text-align:center;}
+
+    .preview-box{border:1px solid #e2e8f0;border-radius:12px;padding:10px;background:#f8fafc;margin-top:10px;}
+    .preview-box h3{margin:0 0 8px 0;font-size:.85rem;color:#334155;text-transform:uppercase;letter-spacing:.5px;}
+    #previewImg{width:100%;max-height:180px;object-fit:contain;background:white;border-radius:10px;border:1px solid #e2e8f0;display:none;}
+    .grid-actions-2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+  </style>
+</head>
+<body>
+
+<div id="splash" class="splash-screen">
+  <div class="splash-icons-cont">
+    <svg class="splash-icon splash-cam" viewBox="0 0 24 24"><path d="M20 6h-2.18l-2.14-2.14C15.32 3.5 14.69 3 14 3h-4c-.69 0-1.32.5-1.68.86L6.18 6H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-8 13c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+    <svg class="splash-icon splash-hour" viewBox="0 0 24 24"><path d="M6 2v6l4 4-4 4v6h12v-6l-4-4 4-4V2H6zm10 14.5V18H8v-1.5l4-4 4 4zM12 11.5l-4-4V4h8v3.5l-4 4z"/></svg>
+  </div>
+  <h1 class="splash-title">SET FOTOGRAFICO</h1>
+  <div style="margin-top:10px; color:#666;">Cargando sistema...</div>
+</div>
+
+<div class="card">
+  <header class="app-header"><h1>SET FOTOGRAFICO</h1></header>
+
+  <div class="content">
+    <div id="s1" class="step active">
+      <h2>Menú Principal</h2>
+      <button id="btn-continuar" class="btn-sec" style="display:none;" onclick="continuarTrabajo()">CONTINUAR</button>
+      <button class="btn-main" onclick="nuevoInforme()">NUEVO</button>
+
+      <div id="recovery-msg" style="display:none; margin-top:15px; padding:15px; background:#fff7ed; border-left:4px solid #f97316; border-radius:4px; font-size:0.85rem; color:#9a3412;">
+        <b>¡Aviso!</b> Tienes un informe sin terminar guardado en la memoria.
+      </div>
+
+      <div id="finalized-msg" style="display:none; margin-top:15px; padding:15px; background:#ecfeff; border-left:4px solid #06b6d4; border-radius:4px; font-size:0.85rem; color:#155e75;">
+        <b>Información:</b> El último informe fue finalizado y la memoria se limpió por seguridad.
+      </div>
+    </div>
+
+    <div id="s2" class="step">
+      <h2>Título del Informe</h2>
+      <textarea id="ti_in" rows="4" placeholder="Ej: INSPECCIÓN TÉCNICA DE..." oninput="saveLocal()"></textarea>
+      <button class="btn-main" onclick="guardarTitulo()">Continuar</button>
+      <button class="btn-sec" onclick="cambiarPaso(1)">Volver al Menú</button>
+    </div>
+
+    <div id="s3" class="step">
+      <h2 id="lbl_f">FOTOGRAFÍA 01</h2>
+
+      <label for="f_input" class="btn-label btn-camara">📷 TOMAR / GALERÍA</label>
+      <input type="file" id="f_input" accept="image/*" onchange="previsualizar()">
+
+      <div id="status"></div>
+
+      <div class="preview-box">
+        <h3>Vista previa</h3>
+        <img id="previewImg" alt="Vista previa">
+        <div class="grid-actions-2">
+          <button id="btn-rotL" class="btn-sec btn-mini" onclick="rotarPreview('L')" disabled>GIRAR 90° IZQ</button>
+          <button id="btn-rotR" class="btn-sec btn-mini" onclick="rotarPreview('R')" disabled>GIRAR 90° DER</button>
+        </div>
+      </div>
+
+      <textarea id="f_txt" rows="3" placeholder="Descripción de la imagen..." oninput="saveLocal()"></textarea>
+
+      <button class="btn-main" id="btn-add" onclick="procesarFoto()">Guardar Foto</button>
+      <button class="btn-sec" onclick="cambiarPaso(4)">Finalizar Carga</button>
+      <button class="btn-sec" onclick="cambiarPaso(1)">Volver al Menú</button>
+    </div>
+
+    <div id="s4" class="step">
+      <h2>Datos de Cierre</h2>
+      <label>Fecha:</label>
+      <input type="date" id="f_date" oninput="saveLocal()">
+      <label>Nombre:</label>
+      <input type="text" id="f_nom" placeholder="SU NOMBRE COMPLETO" oninput="saveLocal()">
+      <label>Cargo:</label>
+      <input type="text" id="f_rank" placeholder="SU GRADO O CARGO" oninput="saveLocal()">
+      <button class="btn-main" onclick="cambiarPaso(5)">Ir a Revisión</button>
+      <button class="btn-sec" onclick="cambiarPaso(1)">Volver al Menú</button>
+    </div>
+
+    <div id="s5" class="step">
+      <h2>Revisión Final</h2>
+
+      <div class="review-box">
+        <label>Título del informe</label>
+        <textarea id="ti_in_review" rows="3" placeholder="Ingrese / edite el título..." oninput="actualizarTituloDesdeRevision(this.value)"></textarea>
+      </div>
+
+      <div class="hint">En cada foto puedes: girar (izq/der) o cambiar el orden (subir/bajar).</div>
+      <div id="render_area"></div>
+
+      <label style="color:#ef4444; font-weight:bold; display:block; margin-top:15px;">NOTA FINAL:</label>
+      <textarea id="final_conclusion" rows="3" oninput="saveLocal()"></textarea>
+
+      <button id="btn-pdf" class="btn-main" style="background:var(--accent); margin-top:20px;" onclick="generarPDF()">GENERAR PDF FINAL</button>
+      <button class="btn-sec" onclick="cambiarPaso(3)">+ Agregar más fotos</button>
+      <button class="btn-danger" onclick="borrarTodo()">🗑️ Borrar Todo y Empezar</button>
+      <button class="btn-sec" onclick="cambiarPaso(1)">Volver al Menú</button>
+    </div>
+  </div>
+
+  <footer class="app-footer">Creada por HERNAN DIAZ</footer>
+</div>
+
+<script>
+  const STORAGE_KEY = 'set_foto_v19';
+  const FINALIZED_FLAG = 'set_foto_v19_finalized';
+
+  const DB_NAME = 'set_foto_db_v1';
+  const DB_VERSION = 1;
+  const STORE_PHOTOS = 'photos';
+
+  let photos = [];
+  let preview = { blob: null, url: null };
+
+  function uuid() { return 'p_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 9); }
+  function revokeAllUrls() { photos.forEach(p => { if (p.url) URL.revokeObjectURL(p.url); }); }
+
+  function clearPreview() {
+    if (preview.url) URL.revokeObjectURL(preview.url);
+    preview = { blob: null, url: null };
+    const img = document.getElementById('previewImg');
+    img.style.display = 'none';
+    img.src = '';
+    document.getElementById('btn-rotL').disabled = true;
+    document.getElementById('btn-rotR').disabled = true;
+  }
+  function showPreviewFromBlob(blob) {
+    clearPreview();
+    preview.blob = blob;
+    preview.url = URL.createObjectURL(blob);
+    const img = document.getElementById('previewImg');
+    img.src = preview.url;
+    img.style.display = 'block';
+    document.getElementById('btn-rotL').disabled = false;
+    document.getElementById('btn-rotR').disabled = false;
+  }
+  function blobToDataURL(blob) {
+    return new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result);
+      fr.onerror = reject;
+      fr.readAsDataURL(blob);
+    });
+  }
+
+  function openDB() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(STORE_PHOTOS)) {
+          db.createObjectStore(STORE_PHOTOS, { keyPath: 'id' });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async function idbPutPhoto(id, blob) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_PHOTOS, 'readwrite');
+      tx.objectStore(STORE_PHOTOS).put({ id, blob });
+      tx.oncomplete = () => { db.close(); resolve(true); };
+      tx.onerror = () => { db.close(); reject(tx.error); };
+    });
+  }
+  async function idbGetPhoto(id) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_PHOTOS, 'readonly');
+      const req = tx.objectStore(STORE_PHOTOS).get(id);
+      req.onsuccess = () => { db.close(); resolve(req.result ? req.result.blob : null); };
+      req.onerror = () => { db.close(); reject(req.error); };
+    });
+  }
+  async function idbDeletePhoto(id) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_PHOTOS, 'readwrite');
+      tx.objectStore(STORE_PHOTOS).delete(id);
+      tx.oncomplete = () => { db.close(); resolve(true); };
+      tx.onerror = () => { db.close(); reject(tx.error); };
+    });
+  }
+  async function idbClearAll() {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_PHOTOS, 'readwrite');
+      tx.objectStore(STORE_PHOTOS).clear();
+      tx.oncomplete = () => { db.close(); resolve(true); };
+      tx.onerror = () => { db.close(); reject(tx.error); };
+    });
+  }
+
+  window.onload = () => {
+    setTimeout(() => { document.getElementById('splash').classList.add('hidden'); }, 2000);
+    arrancarSeguridadYMenu();
+  };
+
+  async function arrancarSeguridadYMenu() {
+    const finalized = localStorage.getItem(FINALIZED_FLAG);
+
+    if (finalized === '1') {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(FINALIZED_FLAG);
+
+      revokeAllUrls();
+      photos = [];
+      await idbClearAll();
+
+      document.getElementById('ti_in').value = "";
+      document.getElementById('f_date').value = new Date().toISOString().split('T')[0];
+      document.getElementById('f_nom').value = "";
+      document.getElementById('f_rank').value = "";
+      document.getElementById('final_conclusion').value = "";
+
+      document.getElementById('finalized-msg').style.display = 'block';
+    } else {
+      document.getElementById('finalized-msg').style.display = 'none';
+    }
+
+    await loadLocal();
+    actualizarMenuPrincipal();
+  }
+
+  function actualizarMenuPrincipal() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    let hasWork = false;
+
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        const titleOk = (data.title || "").trim().length > 0;
+        const photosOk = Array.isArray(data.photos) && data.photos.length > 0;
+        const anyFieldOk = ((data.name||"").trim() || (data.rank||"").trim() || (data.conclusion||"").trim());
+        hasWork = titleOk || photosOk || anyFieldOk;
+      } catch (e) { hasWork = false; }
+    }
+
+    document.getElementById('btn-continuar').style.display = hasWork ? 'block' : 'none';
+    document.getElementById('recovery-msg').style.display = hasWork ? 'block' : 'none';
+  }
+
+  function continuarTrabajo() {
+    const title = (document.getElementById('ti_in').value || "").trim();
+    if (photos.length > 0) cambiarPaso(5);
+    else if (title) cambiarPaso(3);
+    else cambiarPaso(2);
+  }
+
+  async function nuevoInforme() {
+    if (confirm("¿Comenzar un informe NUEVO? Esto borrará el trabajo guardado.")) {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(FINALIZED_FLAG);
+
+      revokeAllUrls();
+      photos = [];
+      await idbClearAll();
+      clearPreview();
+
+      document.getElementById('ti_in').value = "";
+      document.getElementById('f_date').value = new Date().toISOString().split('T')[0];
+      document.getElementById('f_nom').value = "";
+      document.getElementById('f_rank').value = "";
+      document.getElementById('final_conclusion').value = "";
+
+      actualizarMenuPrincipal();
+      cambiarPaso(2);
+    }
+  }
+
+  function saveLocal() {
+    const data = {
+      title: document.getElementById('ti_in').value,
+      photos: photos.map(p => ({ id: p.id, d: p.d, hRatio: p.hRatio })),
+      date: document.getElementById('f_date').value,
+      name: document.getElementById('f_nom').value,
+      rank: document.getElementById('f_rank').value,
+      conclusion: document.getElementById('final_conclusion').value
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    actualizarMenuPrincipal();
+  }
+
+  async function loadLocal() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    revokeAllUrls();
+    photos = [];
+
+    if (saved) {
+      const data = JSON.parse(saved);
+      document.getElementById('ti_in').value = data.title || "";
+      document.getElementById('f_date').value = data.date || new Date().toISOString().split('T')[0];
+      document.getElementById('f_nom').value = data.name || "";
+      document.getElementById('f_rank').value = data.rank || "";
+      document.getElementById('final_conclusion').value = data.conclusion || "";
+
+      const meta = Array.isArray(data.photos) ? data.photos : [];
+      for (const m of meta) {
+        const blob = await idbGetPhoto(m.id);
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          photos.push({ id: m.id, url, d: m.d || "", hRatio: Number(m.hRatio) || 1 });
+        }
+      }
+    } else {
+      document.getElementById('f_date').value = new Date().toISOString().split('T')[0];
+    }
+  }
+
+  async function borrarTodo() {
+    if(confirm("¿Estás seguro de borrar todo? No se podrá recuperar.")) {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(FINALIZED_FLAG);
+
+      revokeAllUrls();
+      photos = [];
+      await idbClearAll();
+      clearPreview();
+
+      location.reload();
+    }
+  }
+
+  function cambiarPaso(n) {
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    document.getElementById('s' + n).classList.add('active');
+
+    if (n === 3) {
+      document.getElementById('lbl_f').innerText = "FOTOGRAFÍA " + (photos.length + 1).toString().padStart(2, '0');
+      document.getElementById('status').innerText = "";
+    }
+
+    if (n === 5) {
+      document.getElementById('ti_in_review').value = document.getElementById('ti_in').value || "";
+      dibujarRevision();
+    }
+
+    document.querySelector('.content').scrollTo(0,0);
+    if (n === 1) actualizarMenuPrincipal();
+  }
+
+  function guardarTitulo() {
+    if(!document.getElementById('ti_in').value.trim()) return alert("Por favor ingrese un título.");
+    saveLocal();
+    cambiarPaso(3);
+  }
+
+  function actualizarTituloDesdeRevision(val) {
+    document.getElementById('ti_in').value = val;
+    saveLocal();
+  }
+
+  async function previsualizar() {
+    const input = document.getElementById('f_input');
+    if(!(input.files && input.files[0])) {
+      document.getElementById('status').innerText = "";
+      clearPreview();
+      return;
+    }
+
+    const file = input.files[0];
+    document.getElementById('status').innerText = "Imagen seleccionada: " + file.name;
+
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const blob = new Blob([arrayBuffer], { type: file.type || "image/jpeg" });
+
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+
+      img.onload = async () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+
+          const MAX = 1200;
+          let w = img.width, h = img.height;
+          if (w > MAX) { h = (h * MAX) / w; w = MAX; }
+
+          canvas.width = w; canvas.height = h;
+          ctx.drawImage(img, 0, 0, w, h);
+
+          const outBlob = await new Promise((resolve) => {
+            canvas.toBlob((b) => resolve(b), "image/jpeg", 0.75);
+          });
+
+          showPreviewFromBlob(outBlob);
+
+        } catch (err) {
+          console.error(err);
+          alert("Error creando vista previa.");
+          clearPreview();
+        } finally { URL.revokeObjectURL(url); }
+      };
+
+      img.onerror = () => { URL.revokeObjectURL(url); alert("No se pudo cargar la imagen."); clearPreview(); };
+      img.src = url;
+
+    } catch (e) {
+      console.error(e);
+      alert("Error al leer la imagen.");
+      clearPreview();
+    }
+  }
+
+  async function rotarPreview(dir) {
+    try {
+      if (!preview.blob) return;
+
+      const url = URL.createObjectURL(preview.blob);
+      const img = new Image();
+
+      img.onload = async () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+
+          canvas.width = img.height;
+          canvas.height = img.width;
+
+          if (dir === 'R') { ctx.translate(canvas.width, 0); ctx.rotate(Math.PI/2); }
+          else { ctx.translate(0, canvas.height); ctx.rotate(-Math.PI/2); }
+
+          ctx.drawImage(img, 0, 0);
+
+          const outBlob = await new Promise((resolve) => {
+            canvas.toBlob((b) => resolve(b), "image/jpeg", 0.8);
+          });
+
+          showPreviewFromBlob(outBlob);
+
+        } catch (err) {
+          console.error(err);
+          alert("No se pudo rotar la vista previa.");
+        } finally { URL.revokeObjectURL(url); }
+      };
+
+      img.onerror = () => { URL.revokeObjectURL(url); alert("No se pudo cargar la imagen para rotar."); };
+      img.src = url;
+
+    } catch (e) {
+      console.error(e);
+      alert("Error al rotar la vista previa.");
+    }
+  }
+
+  async function procesarFoto() {
+    const input = document.getElementById('f_input');
+    if(!preview.blob) return alert("Debe seleccionar una foto primero (y ver la miniatura).");
+
+    document.getElementById('btn-add').disabled = true;
+    document.getElementById('status').innerText = "Guardando imagen...";
+
+    try {
+      const outBlob = preview.blob;
+
+      const id = uuid();
+      await idbPutPhoto(id, outBlob);
+
+      const previewUrl = URL.createObjectURL(outBlob);
+
+      const tmpUrl = URL.createObjectURL(outBlob);
+      const img = new Image();
+      await new Promise((resolve, reject) => {
+        img.onload = () => resolve(true);
+        img.onerror = reject;
+        img.src = tmpUrl;
+      });
+      const hRatio = img.height / img.width;
+      URL.revokeObjectURL(tmpUrl);
+
+      photos.push({ id, url: previewUrl, d: document.getElementById('f_txt').value, hRatio });
+
+      input.value = "";
+      document.getElementById('f_txt').value = "";
+      clearPreview();
+
+      document.getElementById('btn-add').disabled = false;
+      document.getElementById('status').innerText = "¡Guardada correctamente!";
+      saveLocal();
+
+      setTimeout(() => { cambiarPaso(3); }, 250);
+
+    } catch(e) {
+      console.error(e);
+      alert("Error al guardar la foto.");
+      document.getElementById('btn-add').disabled = false;
+      document.getElementById('status').innerText = "";
+    }
+  }
+
+  async function eliminarFoto(index) {
+    if(confirm("¿Eliminar esta foto?")) {
+      const p = photos[index];
+      if (p?.url) URL.revokeObjectURL(p.url);
+
+      photos.splice(index, 1);
+      saveLocal();
+      dibujarRevision();
+
+      if (p?.id) { try { await idbDeletePhoto(p.id); } catch(_) {} }
+    }
+  }
+  function actualizarDesc(index, val) { photos[index].d = val; saveLocal(); }
+
+  function moverFoto(index, dir) {
+    const newIndex = index + dir;
+    if (newIndex < 0 || newIndex >= photos.length) return;
+    const tmp = photos[index];
+    photos[index] = photos[newIndex];
+    photos[newIndex] = tmp;
+    saveLocal();
+    dibujarRevision();
+  }
+
+  async function rotarFoto(index, dir) {
+    try {
+      const p = photos[index];
+      if (!p) return;
+
+      const blob = await idbGetPhoto(p.id);
+      if (!blob) return alert("No se encontró la imagen en la base local.");
+
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = async () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+
+          canvas.width = img.height;
+          canvas.height = img.width;
+
+          if (dir === 'R') { ctx.translate(canvas.width, 0); ctx.rotate(Math.PI/2); }
+          else { ctx.translate(0, canvas.height); ctx.rotate(-Math.PI/2); }
+
+          ctx.drawImage(img, 0, 0);
+
+          const outBlob = await new Promise((resolve) => {
+            canvas.toBlob((b) => resolve(b), "image/jpeg", 0.8);
+          });
+
+          await idbPutPhoto(p.id, outBlob);
+
+          if (p.url) URL.revokeObjectURL(p.url);
+          p.url = URL.createObjectURL(outBlob);
+          p.hRatio = canvas.height / canvas.width;
+
+          saveLocal();
+          dibujarRevision();
+
+        } catch (err) {
+          console.error(err);
+          alert("No se pudo rotar la foto.");
+        } finally { URL.revokeObjectURL(url); }
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); alert("No se pudo cargar la imagen para rotar."); };
+      img.src = url;
+
+    } catch (e) {
+      console.error(e);
+      alert("Error al rotar la foto.");
+    }
+  }
+
+  function dibujarRevision() {
+    const area = document.getElementById('render_area');
+    area.innerHTML = "";
+    if(photos.length === 0) area.innerHTML = "<p style='text-align:center'>No hay fotos cargadas.</p>";
+
+    photos.forEach((p, i) => {
+      const div = document.createElement('div');
+      div.className = 'item-foto';
+
+      const upDisabled = (i === 0) ? 'disabled' : '';
+      const downDisabled = (i === photos.length - 1) ? 'disabled' : '';
+
+      div.innerHTML = `
+        <div class="item-header">
+          <span>FOTO ${(i+1).toString().padStart(2, '0')}</span>
+          <span class="btn-delete" onclick="eliminarFoto(${i})">ELIMINAR ✕</span>
+        </div>
+
+        <img src="${p.url}" style="width:100%; border-radius:5px; border:1px solid #ddd; margin-bottom:5px;">
+
+        <textarea placeholder="Descripción..." onchange="actualizarDesc(${i}, this.value)">${p.d || ""}</textarea>
+
+        <div class="grid-actions-4">
+          <button class="btn-sec btn-mini" onclick="rotarFoto(${i}, 'L')">GIRAR 90° IZQ</button>
+          <button class="btn-sec btn-mini" onclick="rotarFoto(${i}, 'R')">GIRAR 90° DER</button>
+          <button class="btn-main btn-mini" ${upDisabled} onclick="moverFoto(${i}, -1)">SUBIR</button>
+          <button class="btn-main btn-mini" ${downDisabled} onclick="moverFoto(${i}, 1)">BAJAR</button>
+        </div>
+      `;
+      area.appendChild(div);
+    });
+  }
+
+  /***********************
+   * PDF: Justificación cuadrada + primera línea alineada al margen derecho igual que el resto
+   ***********************/
+  function normalizeText(s) { return (s || "").replace(/\u00A0/g, " ").trim(); }
+
+  function splitLongTokenByWidth(doc, token, maxWidth) {
+    const out = [];
+    let chunk = "";
+    for (const ch of token) {
+      const test = chunk + ch;
+      if (doc.getTextWidth(test) <= maxWidth) chunk = test;
+      else { if (chunk) out.push(chunk); chunk = ch; }
+    }
+    if (chunk) out.push(chunk);
+    return out;
+  }
+
+  function wordsSafe(doc, text, maxWidth) {
+    const raw = normalizeText(text).replace(/\s+/g, " ");
+    if (!raw) return [];
+    const tokens = raw.split(" ");
+    const out = [];
+    for (const tok of tokens) {
+      if (!tok) continue;
+      if (doc.getTextWidth(tok) <= maxWidth) out.push(tok);
+      else out.push(...splitLongTokenByWidth(doc, tok, maxWidth));
+    }
+    return out;
+  }
+
+  function drawJustifiedMixedSegments(doc, segments, x, y, width) {
+    // segments: [{text, font:"normal|bold"}]
+    if (!segments || segments.length === 0) return;
+
+    // si solo 1 segmento, sin justificar
+    if (segments.length === 1) {
+      doc.setFont("helvetica", segments[0].font);
+      doc.text(segments[0].text, x, y);
+      return;
+    }
+
+    // medir anchos con su estilo
+    let totalW = 0;
+    const widths = [];
+    for (const seg of segments) {
+      doc.setFont("helvetica", seg.font);
+      const w = doc.getTextWidth(seg.text);
+      widths.push(w);
+      totalW += w;
+    }
+
+    const gaps = segments.length - 1;
+    if (totalW >= width || gaps <= 0) {
+      // fallback: imprime con espacios normales
+      let cx = x;
+      for (let i = 0; i < segments.length; i++) {
+        doc.setFont("helvetica", segments[i].font);
+        doc.text(segments[i].text, cx, y);
+        cx += widths[i];
+        if (i < segments.length - 1) {
+          doc.setFont("helvetica", "normal");
+          const sp = doc.getTextWidth(" ");
+          cx += sp;
+        }
+      }
+      return;
+    }
+
+    const gapSize = (width - totalW) / gaps;
+
+    // dibujar
+    let cx = x;
+    for (let i = 0; i < segments.length; i++) {
+      doc.setFont("helvetica", segments[i].font);
+      doc.text(segments[i].text, cx, y);
+      cx += widths[i];
+      if (i < segments.length - 1) cx += gapSize;
+    }
+  }
+
+  function buildFirstLineWithLabel(doc, label, words, width) {
+    // arma una línea que incluya label + palabras, sin exceder width
+    // label se mide en bold, palabras en normal
+    const line = [];
+    doc.setFont("helvetica", "bold");
+    let currentW = doc.getTextWidth(label);
+
+    // si hay texto, agregamos un "gap" (espacio) que se justificará luego (no lo medimos como ancho fijo)
+    // para el cálculo de corte, consideramos un espacio normal mínimo
+    doc.setFont("helvetica", "normal");
+    const minSpace = doc.getTextWidth(" ");
+    currentW += minSpace;
+
+    for (const w of words) {
+      const test = line.length ? (currentW + doc.getTextWidth(w) + minSpace) : (currentW + doc.getTextWidth(w));
+      if (test <= width) {
+        line.push(w);
+        currentW = test;
+      } else {
+        break;
+      }
+    }
+    return line;
+  }
+
+  function buildLines(doc, words, width) {
+    const lines = [];
+    let line = [];
+    for (const w of words) {
+      const testLine = line.length ? [...line, w] : [w];
+      const testText = testLine.join(" ");
+      if (doc.getTextWidth(testText) <= width) line = testLine;
+      else { if (line.length) lines.push(line); line = [w]; }
+    }
+    if (line.length) lines.push(line);
+    return lines;
+  }
+
+  function drawJustifiedWords(doc, words, x, y, width) {
+    if (!words || words.length === 0) return;
+    if (words.length === 1) { doc.text(words[0], x, y); return; }
+
+    const wordsWidth = words.reduce((sum, w) => sum + doc.getTextWidth(w), 0);
+    const gaps = words.length - 1;
+    if (wordsWidth >= width || gaps <= 0) { doc.text(words.join(" "), x, y); return; }
+
+    const gapSize = (width - wordsWidth) / gaps;
+    let cursorX = x;
+    for (let i = 0; i < words.length; i++) {
+      doc.text(words[i], cursorX, y);
+      cursorX += doc.getTextWidth(words[i]);
+      if (i < words.length - 1) cursorX += gapSize;
+    }
+  }
+
+  function printTitleUnderlinedSafe(doc, titleText, pW, usefulW, state, pageBreakFn) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(0);
+
+    const words = wordsSafe(doc, titleText, usefulW);
+    const lines = buildLines(doc, words, usefulW).map(arr => arr.join(" "));
+
+    for (const line of lines) {
+      if (state.y > 275) pageBreakFn();
+
+      const tw = doc.getTextWidth(line);
+      const tx = (pW - tw) / 2;
+
+      doc.text(line, pW / 2, state.y, { align: 'center' });
+      doc.setLineWidth(0.5);
+      doc.line(tx, state.y + 1.2, tx + tw, state.y + 1.2);
+
+      state.y += 7;
+    }
+    state.y += 8;
+  }
+
+  // ✅ CORRECCIÓN: la PRIMERA línea también se justifica en TODO el ancho útil (alineando el margen derecho)
+  function imprimirEtiquetaEnMismaLinea_CuadradoTotal(doc, etiqueta, texto, x, width, lineHeight, state, pageBreakFn, color=null) {
+    const t = normalizeText(texto);
+    if (!t) return;
+
+    const setColor = () => {
+      if (color) doc.setTextColor(color[0], color[1], color[2]);
+      else doc.setTextColor(0);
+    };
+
+    const label = (etiqueta || "").trim();
+    doc.setFont("helvetica", "normal");
+    setColor();
+    const allWords = wordsSafe(doc, t, width);
+
+    // primera línea: label (bold) + N palabras (normal) dentro del ancho completo
+    const firstLineWords = buildFirstLineWithLabel(doc, label, allWords, width);
+    const remainingWords = allWords.slice(firstLineWords.length);
+    const restLines = buildLines(doc, remainingWords, width);
+
+    if (state.y > 275) pageBreakFn();
+
+    // --- DIBUJO PRIMERA LÍNEA ---
+    // armamos segmentos: [label(bold), ...palabras(normal)]
+    const segments = [{ text: label, font: "bold" }, ...firstLineWords.map(w => ({ text: w, font: "normal" }))];
+
+    // si hay más líneas, justificamos esta primera línea a ancho completo (margen derecho alineado)
+    // si no hay más líneas, la dejamos normal (sin estirar)
+    setColor();
+    if (restLines.length > 0) {
+      drawJustifiedMixedSegments(doc, segments, x, state.y, width);
+    } else {
+      // impresión normal: label bold + texto normal
+      let cx = x;
+      doc.setFont("helvetica", "bold"); doc.text(label, cx, state.y); cx += doc.getTextWidth(label);
+      doc.setFont("helvetica", "normal"); doc.text(" " + firstLineWords.join(" "), cx, state.y);
+    }
+
+    state.y += lineHeight;
+
+    // --- RESTO DEL PÁRRAFO ---
+    doc.setFont("helvetica", "normal");
+    for (let i = 0; i < restLines.length; i++) {
+      if (state.y > 275) pageBreakFn();
+      const isLast = (i === restLines.length - 1);
+      if (!isLast) drawJustifiedWords(doc, restLines[i], x, state.y, width);
+      else doc.text(restLines[i].join(" "), x, state.y);
+      state.y += lineHeight;
+    }
+
+    state.y += 3;
+    doc.setTextColor(0);
+  }
+
+  async function generarPDF() {
+    const btn = document.getElementById('btn-pdf');
+    btn.innerText = "GENERANDO..."; btn.disabled = true;
+
+    try {
+      await new Promise(r => setTimeout(r, 100));
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      const pW = doc.internal.pageSize.getWidth();
+      const pMargin = 25;
+      const usefulW = pW - (pMargin * 2);
+
+      const state = { y: 30 };
+      const pageBreakFn = () => { doc.addPage(); state.y = 30; };
+
+      // TÍTULO
+      const title = (document.getElementById('ti_in').value || "").toUpperCase();
+      printTitleUnderlinedSafe(doc, title, pW, usefulW, state, pageBreakFn);
+
+      // FOTOS: alto máximo 7.5 cm aprox
+      const maxImgH = 75;
+      doc.setFontSize(12);
+
+      for (let i = 0; i < photos.length; i++) {
+        const p = photos[i];
+        const blob = await idbGetPhoto(p.id);
+        if (!blob) continue;
+
+        const dataUrl = await blobToDataURL(blob);
+
+        let imgH = maxImgH;
+        let imgW = imgH / p.hRatio;
+        if (imgW > usefulW) { imgW = usefulW; imgH = imgW * p.hRatio; }
+
+        if (state.y + imgH + 25 > 275) pageBreakFn();
+
+        const xImg = (pW - imgW) / 2;
+        doc.addImage(dataUrl, 'JPEG', xImg, state.y, imgW, imgH);
+
+        doc.setDrawColor(0); doc.setLineWidth(0.3);
+        doc.rect(xImg, state.y, imgW, imgH);
+
+        state.y += imgH + 8;
+
+        // ✅ FOTOGRAFÍA: primera línea y siguientes con mismo margen derecho
+        imprimirEtiquetaEnMismaLinea_CuadradoTotal(
+          doc,
+          `FOTOGRAFÍA ${(i+1).toString().padStart(2,'0')}:`,
+          (p.d || ""),
+          pMargin,
+          usefulW,
+          5,
+          state,
+          pageBreakFn
+        );
+
+        state.y += 2;
+      }
+
+      // NOTA FINAL (rojo): igual
+      const conclusion = document.getElementById('final_conclusion').value;
+      if (conclusion && conclusion.trim()) {
+        if (state.y + 20 > 275) pageBreakFn();
+
+        imprimirEtiquetaEnMismaLinea_CuadradoTotal(
+          doc,
+          "NOTA:",
+          conclusion,
+          pMargin,
+          usefulW,
+          5,
+          state,
+          pageBreakFn,
+          [220, 38, 38]
+        );
+      }
+
+      // FIRMA
+      if (state.y + 35 > 275) pageBreakFn(); else state.y += 10;
+
+      doc.setFontSize(12); doc.setTextColor(0); doc.setFont("helvetica", "normal");
+      doc.text("FECHA: " + document.getElementById('f_date').value, pW - pMargin, state.y, {align:'right'});
+
+      state.y += 20;
+      doc.setFont("helvetica", "bold");
+      doc.text(document.getElementById('f_nom').value.toUpperCase(), pW/2, state.y, {align:'center'});
+
+      state.y += 5;
+      doc.setFont("helvetica", "normal");
+      doc.text(document.getElementById('f_rank').value.toUpperCase(), pW/2, state.y, {align:'center'});
+
+      // PAGINAS
+      const totalPages = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(0);
+        doc.text(`Página ${i} de ${totalPages}`, pW - pMargin, 10, {align:'right'});
+      }
+
+      doc.save("Reporte_Fotografico.pdf");
+      localStorage.setItem(FINALIZED_FLAG, '1');
+
+    } catch (e) {
+      console.error(e);
+      alert("Error al generar el PDF. Intente con menos fotos o fotos más ligeras.");
+    } finally {
+      btn.innerText = "GENERAR PDF FINAL";
+      btn.disabled = false;
+    }
+  }
+</script>
+</body>
+</html>
